@@ -1,0 +1,303 @@
+:root {
+  --padding: 10px;
+  --menu: 250px; }
+
+* {
+  box-sizing: border-box; }
+
+canvas {
+  display: block; }
+
+body {
+  margin: 0;
+  color: #FFFFFF;
+  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol; }
+
+.page {
+  position: fixed;
+  top: 0;
+  left: 0; }
+
+#game-title {
+  --height: 150px;
+  height: calc(var(--height)*2);
+  text-align: center;
+  font-size: var(--height);
+  line-height: var(--height); }
+
+.row {
+  display: flex;
+  flex-direction: row; }
+
+.column {
+  display: flex;
+  flex-direction: column; }
+
+.content {
+  text-align: center;
+  width: calc(50% - var(--menu)/2);
+  display: flex;
+  flex-direction: column-reverse;
+  margin: var(--padding); }
+
+.fit {
+  width: 100%;
+  height: 100%; }
+
+.svg-triangle path {
+  fill: white;
+  stroke-width: 5;
+  stroke: #00FF00;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  cursor: pointer; }
+
+.menu-options {
+  display: block;
+  text-align: center;
+  width: 100%;
+  height: calc(50% - (var(--padding)*2)/3);
+  border: 5px solid #00FF00;
+  font-size: large;
+  border-radius: 30px;
+  margin-bottom: var(--padding); }
+
+input.menu-options {
+  background-color: #FFFFFF;
+  color: #000000; }
+
+button.menu-options {
+  background-color: #00FF00;
+  color: #FFFFFF;
+  cursor: pointer; }
+
+#menu-middle-div {
+  display: flex;
+  flex-direction: column-reverse;
+  width: var(--menu); }
+
+#middle-ads {
+  background-color: #FFFFFF;
+  color: #000000;
+  width: 100%;
+  height: var(--menu);
+  border-radius: 10px;
+  border-bottom: 10px solid #BBBBBB;
+  margin: var(--padding) 0;
+  padding: var(--padding); }
+
+.spacer {
+  flex: 1; }
+
+.box {
+  width: 100%;
+  padding: var(--padding);
+  margin: 0 auto;
+  border-radius: 10px; }
+
+.box h1 {
+  margin: auto var(--padding);
+  font-size: 16px;
+  color: #FFFFFF; }
+
+.box button {
+  margin: auto var(--padding);
+  padding: 10px 30px;
+  font-size: 16px;
+  font-weight: bold;
+  border: 0;
+  border-radius: 100px;
+  background: #e6f9af;
+  box-shadow: 0px 1px 2px rgba(19, 19, 19, 0.52);
+  cursor: pointer;
+  transition: background 0.1s ease;
+  font-family: monospace; }
+
+.color {
+  position: fixed;
+  width: 0;
+  height: 0;
+  top: 0;
+  left: 0;
+  border-top: 0 solid transparent; }
+
+#color-select {
+  position: fixed;
+  top: 0px;
+  left: 0px;
+  width: 0px;
+  height: 0px;
+  border-top: 0 solid transparent;
+  border-left: 150px solid #FFFFFF;
+  border-bottom: 150px solid transparent;
+  cursor: pointer; }
+
+/*
+body {
+    margin: 0;
+    color: #FFFFFF;
+    font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol;
+}
+.wide {
+    padding: 0px var(--padding);
+}
+.menu-options {
+    display: block;
+    text-align: center;
+    width: 100%;
+    height: calc(50% - var(--padding)*2/3);
+    border: 5px solid #00FF00;
+    font-size: large;
+    border-radius: 30px;
+    margin-bottom: var(--padding);
+}
+button.menu-options {
+    background-color: #00FF00;
+    color: white;
+    cursor: pointer;
+}
+input.menu-options {
+    background-color: white;
+    color: black;
+}
+.page {
+    position: fixed;
+    width:100%;
+    height:100%;
+    top:0px;
+    left:0px;
+    text-align: center;
+}
+.content {
+    display: flex;
+    padding: 0 155px;
+    transition: padding 0.3s ease, margin-top 0.3 ease;
+    margin: var(--padding) 0 0;
+}
+.content h1 {
+    width:100%;
+    text-align: center;
+    font-size: 100px;
+}
+.section:nth-child(1) {
+    padding-left: var(--padding);
+}
+.section {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    margin: 0 calc(0px - var(--padding));
+    padding: 0 var(--padding) 0 calc(var(--padding) * 2 + var(--padding));
+}
+.flex {
+    display: flex;
+    flex:1;
+}
+.data {
+    display: flex;
+    flex: 1;
+    flex-direction: column-reverse;
+    margin: 0 calc(0px - var(--padding));
+    padding: 0 var(--padding) 0 calc(var(--padding) * 2 + var(--padding));
+}
+.box {
+    padding: calc(var(--padding) * 2);
+    margin: var(--padding) 0 calc(var(--padding) * 2);
+    border-radius: 6px;
+    font-size: 16px;
+    text-align: justify;
+}
+.box h1 {
+    font-size: 24px;
+    line-height: 1;
+    margin: 0 0 calc((var(--padding) * 2) - 5px);
+    display: flex;
+    align-items: center;
+}
+.svg-triangle path {
+    fill: white;
+    stroke-width: 5;
+    stroke: #00FF00;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+}
+#ads{
+    height: 180px;
+    margin: 0 0 calc((var(--padding) * 2) - 5px);
+    padding: var(--padding);
+    border-radius: 6px;
+}
+*/
+/*
+#color-select button {
+    width: 20px;
+    height:20px;
+    cursor: pointer;
+}*/
+/*
+#player-name{
+    position: relative;
+    box-sizing: border-box;
+    text-align: center;
+    border-radius: 30px;
+    padding: 10px;
+    margin: 5px;
+    width: 200px;
+    height:50px;
+    border: 5px solid #00FF00;
+}
+#player-name::placeholder{
+    text-align: center;
+}
+#play-button {
+    color: #FFFFFF;
+    font-size: large;
+    position: relative;
+    box-sizing: border-box;
+    text-align: center;
+    background-color: #00FF00;
+    width: 200px;
+    margin: 5px;
+    padding: 10px;
+    height:50px;
+    border-radius: 30px;
+    border-style: none;
+	cursor: pointer;
+}*/
+#playerlist {
+  font-family: monospace;
+  font-weight: bolder;
+  color: #FFFFFF;
+  text-align: center;
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 275px;
+  z-index: 1;
+  margin: 10px;
+  padding: 5px;
+  border-radius: 30px; }
+
+#playerlist li {
+  margin: 10px; }
+
+/*
+#name{
+    position: relative;
+    font-family: monospace;
+    text-align: center;
+    margin: 10px;
+    padding: 5px;
+    border-radius: 30px;
+    background-color:rgba(255,0,0,0.5);
+}
+#ranks{
+    position: relative;
+    font-family: monospace;
+    text-align: center;
+    margin: 10px;
+    padding: 5px;
+    border-radius: 30px;
+    background-color:rgba(0,0,255,0.5);
+}
+*/

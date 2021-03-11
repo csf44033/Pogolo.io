@@ -353,71 +353,6 @@ const Game = class {
 		var players = [];
 		var pucks = [];
 
-		/*Player collisions*/
-		Object.values(this.players).forEach(player => {
-			var id = player.id;
-			var vx0 = player.vx;
-			var vy0 = player.vy;
-			var vanguard = player.vanguard;
-
-			/*Puck*/
-			Object.values(this.pucks).forEach(puck => {
-				var contacts = vanguard.getContact(puck);
-				var vx1 = puck.vx;
-				var vy1 = puck.vy;
-				Object.values(contacts).forEach(contact => {
-					var distance = contact.distance;
-					var nx = contact.normalX;
-					var ny = contact.normalY;
-
-					var relativeVx = vx1 - vx0;
-					var relativeVy = vy1 - vy0;
-					var velAlongNormal = nx*relativeVx + ny*relativeVy;
-					var remove = (velAlongNormal + distance)/2;
-					if(remove < 0){
-						player.bang(remove, nx, ny);
-						puck.bang(remove, -nx, -ny);
-					}
-				});
-
-				var distance = puck.getContact(player.body).distance;
-				if(distance < 0){
-					this.removePlayer(id)
-					return;
-				}
-			});
-
-			/*Walls*/
-			Object.values(this.objects).forEach(body=>{
-				var contact = body.getContact(player.body);
-				var distance = contact.distance;
-				var nx = contact.normalX;
-				var ny = contact.normalY;
-				var velAlongNormal = nx*vx0 + ny*vy0;
-				var remove = velAlongNormal + distance;
-				if(remove < 0) player.bang(remove, -nx, -ny);
-			});
-
-			/*Players*/
-			Object.values(this.players).forEach(body=>{
-				if(id === body.id) return;
-				var contact = body.body.getContact(player.body);
-				var distance = contact.distance;
-				var nx = contact.normalX;
-				var ny = contact.normalY;
-				var vx1 = body.vx;
-				var vy1 = body.vy;
-				var relativeVx = vx1 - vx0;
-				var relativeVy = vy1 - vy0;
-				var velAlongNormal = nx*relativeVx + ny*relativeVy;
-				var remove = (velAlongNormal + distance)/2;
-				if(remove < 0){
-					player.bang(remove, nx, ny);
-					body.bang(remove, -nx, -ny);
-				}
-			});
-		});
-
 		/*Puck collisions*/
 		for(var i = this.pucks.length; i --;){
 			var puck = this.pucks[i];
@@ -456,6 +391,71 @@ const Game = class {
 				}
 			}
 		}
+
+		/*Player collisions*/
+		Object.values(this.players).forEach(player => {
+			var id = player.id;
+			var vx0 = player.vx;
+			var vy0 = player.vy;
+			var vanguard = player.vanguard;
+  
+			/*Walls*/
+			Object.values(this.objects).forEach(body=>{
+				var contact = body.getContact(player.body);
+				var distance = contact.distance;
+				var nx = contact.normalX;
+				var ny = contact.normalY;
+				var velAlongNormal = nx*vx0 + ny*vy0;
+				var remove = velAlongNormal + distance;
+				if(remove < 0) player.bang(remove, -nx, -ny);
+			});
+
+			/*Puck*/
+			Object.values(this.pucks).forEach(puck => {
+				var contacts = vanguard.getContact(puck);
+				var vx1 = puck.vx;
+				var vy1 = puck.vy;
+				Object.values(contacts).forEach(contact => {
+					var distance = contact.distance;
+					var nx = contact.normalX;
+					var ny = contact.normalY;
+
+					var relativeVx = vx1 - vx0;
+					var relativeVy = vy1 - vy0;
+					var velAlongNormal = nx*relativeVx + ny*relativeVy;
+					var remove = (velAlongNormal + distance)/2;
+					if(remove < 0){
+						player.bang(remove, nx, ny);
+						puck.bang(remove, -nx, -ny);
+					}
+				});
+
+				var distance = puck.getContact(player.body).distance;
+				if(distance < 0){
+					this.removePlayer(id)
+					return;
+				}
+			});
+
+			/*Players*/
+			Object.values(this.players).forEach(body=>{
+				if(id === body.id) return;
+				var contact = body.body.getContact(player.body);
+				var distance = contact.distance;
+				var nx = contact.normalX;
+				var ny = contact.normalY;
+				var vx1 = body.vx;
+				var vy1 = body.vy;
+				var relativeVx = vx0 - vx1;
+				var relativeVy = vy0 - vy1;
+				var velAlongNormal = nx*relativeVx + ny*relativeVy;
+				var remove = (velAlongNormal + distance)/2;
+				if(remove < 0){
+					player.bang(remove, -nx, -ny);
+					body.bang(remove, nx, ny);
+				}
+			});
+		});
 
 		/*Update player*/
 		Object.values(this.players).forEach(player => {

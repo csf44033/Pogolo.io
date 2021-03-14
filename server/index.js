@@ -216,7 +216,6 @@ function Puck (x,y){
 	this.angle = round(Math.random()*360,1);
 
 	this.sentBy = void 0;
-	this.bounced = true;
 }
 Puck.prototype = Object.create(Circle.prototype);
 
@@ -295,17 +294,20 @@ const Game = class {
 
 				switch (msg.type) {
 					case "join":
+
+						// variables
 						let name = data.name;
 						let type = data.type;
 						if(name.length === 0) name = "Anonymous";
 
-						//id,name,type,id,name,type...
+						// tell all the players this user joined
 						var message = [PID, name, type]
-
-						//broadcast player joined
 						this.gamecast(1, message);
-						message = [message,[],this.pucks.length]
-						//add other players to message
+
+						// tell the player all existing data
+						message = [message, [], this.pucks.length];
+
+						// add objects
 						Object.values(this.players).forEach(player=>{
 							message[0].push(player.id, player.name, player.type);
 						});
@@ -313,10 +315,10 @@ const Game = class {
 							message[1].push(object.x, object.y, object.radius);
 						});
 
-						//send players to client
+						// send players to client
 						this.send(ws, 2, message);
 
-						//add player
+						// add player
 						this.players[PID] = new Player(name, PID, type, 2);
 						console.log("Client", PID, "Created Player", name);
 					break;
@@ -334,7 +336,7 @@ const Game = class {
 			ws.on("close", () => {
 				this.removeClient(PID);//remove client
 				try {
-					this.removePlayer(PID);//if the client had a player remove it
+					this.removePlayer([PID]);//if the client had a player remove it
 				} catch {
 					console.log("Client Does Not Have a Player")
 				}
@@ -427,14 +429,12 @@ const Game = class {
 					if(remove < 0){
 						player.bang(remove, nx, ny);
 						puck.bang(remove, -nx, -ny);
+						puck.sentBy = id;
 					}
 				});
 
 				var distance = puck.getContact(player.body).distance;
-				if(distance < 0){
-					this.removePlayer(id)
-					return;
-				}
+				if(distance < 0) this.removePlayer([id, puck.sentBy])
 			});
 
 			/*Players*/
@@ -499,164 +499,6 @@ const Game = class {
 			);
 		})
 		this.gamecast(0, [players, pucks])
-	}
-	updateObjects(){
-
-		//test for death
-		Object.values(this.players).forEach(player=>{
-			var b = player.body;
-			var id = player.id;
-			for(var i = 1; i < 4; i ++){
-				var ball = this.objects[i];
-				let contact = b.getContact(ball);
-				let distance = contact.distance;
-				if(distance > 0) continue;
-
-				try {
-					let p = this.players[ball.sentBy];
-					p.score += 5;
-					p.killed.push(player.name);
-				} catch {
-					console.log("Puck Did Not Have a Sender")
-				}
-
-				this.removePlayer(id);//delete player
-				break;
-			}
-		})
-		{/*
-		Object.values(this.objects).forEach(index=>{
-
-			//var player = this.objects[index];
-			//let v = player.vanguard;//arc
-			//let b = player.body;	//circle
-			//let id = player.id;		//player id
-
-			//collide with balls
-			for(var j = 0; j < this.balls.length; j ++){
-				let ball = this.balls[j];
-				let contact = v.getContact(ball);
-				let distance = contact.distance;
-				let nx = contact.normalX;
-				let ny = contact.normalY;
-
-				//if ball is in arc
-				if(distance < 0){
-					var newhit = ball.sentBy !== id;
-					if(newhit === true) ball.bounced = true;
-					if(newhit === true || ball.bounced === true){
-						player.score ++;
-						ball.sentBy = id;
-						ball.bounced = false
-					}
-
-					//move ball out of arc
-					ball.x -= nx*distance;
-					ball.y -= ny*distance;
-					//reflect balls velocity
-					let p = player.vx * nx + player.vy * ny - ball.vx * nx - ball.vy * ny;
-					player.vx -= p * nx;
-					player.vy -= p * ny;
-					let magnitude = player.speed/Math.sqrt(player.vx*player.vx + player.vy*player.vy);
-					player.vx*=magnitude;
-					player.vy*=magnitude;
-
-					ball.vx += p * nx;
-					ball.vy += p * ny;
-					magnitude = ball.speed/Math.sqrt(ball.vx*ball.vx + ball.vy*ball.vy);
-					ball.vx*=magnitude;
-					ball.vy*=magnitude;
-				}else{//if the arc has not guarded, check collision with circle
-					contact = b.getContact(ball);
-					distance = contact.distance;
-					//if ball is in circle
-					if(distance < 0){
-						let b = ball.sentBy;
-						if((this.players[b] !== void 0) && (b !== id)){
-							let p = this.players[b];
-							p.score += 5;
-							p.killed.push(player.name);
-						}
-						this.removePlayer(id);//delete player
-						return;//ignore anything else
-					}
-				}
-			}
-
-			//collide with players
-			Object.values(this.players).forEach(p=>{
-				if(id === p.id) return;//do not collide with self
-				let ob = p.body;
-				let contact = ob.getContact(b);
-				let distance = contact.distance;
-				let nx = contact.normalX;
-				let ny = contact.normalY;
-				if(distance>=0) return;//player not colliding
-
-				let d = player.vx * nx + player.vy * ny - p.vx * nx - p.vy * ny;
-				player.vx -= d * nx;
-				player.vy -= d * ny; 
-				let v = player.speed/Math.sqrt(player.vx*player.vx + player.vy*player.vy);
-				player.vx*=v;
-				player.vy*=v;
-
-				p.vx += d * nx; 
-				p.vy += d * ny;
-				v = p.speed/Math.sqrt(p.vx*p.vx + p.vy*p.vy);
-				p.vx*=v;
-				p.vy*=v;
-			});
-			for(var j = 0; j < this.arena.length; j ++){
-				var a = this.arena[j];
-				var contact = a.getContact(b);
-				var distance = contact.distance;
-				var nx = contact.normalX;
-				var ny = contact.normalY;
-				if(distance>=0) continue;
-				var d = 2*(nx*player.vx + ny*player.vy);
-				player.vx -= nx*d;
-				player.vy -= ny*d;
-			}
-		});
-
-		var bodies = this.arena.concat(this.balls);
-		for(var i = 0, N = bodies.length; i < N; i ++){
-			for(var j = i + 1; j < N; j ++){
-				var bodyA = bodies[i];
-				var bodyB = bodies[j];
-				var aInverseMass = bodyA.inverseMass;
-				var bInverseMass = bodyB.inverseMass;
-				if (aInverseMass === 0 && bInverseMass === 0) continue
-				var contact = bodyA.getContact(bodyB);
-				var distance = contact.distance;
-				var nx = contact.normalX;
-				var ny = contact.normalY;
-				if(distance>=0) continue;
-
-				bodyB.x -= nx*distance;
-				bodyB.y -= ny*distance;
-
-				if(aInverseMass){
-					let p = bodyA.vx * nx + bodyA.vy * ny - bodyB.vx * nx - bodyB.vy * ny;
-					bodyA.vx -= p * nx;
-					bodyA.vy -= p * ny;
-					let v = bodyA.speed/Math.sqrt(bodyA.vx*bodyA.vx + bodyA.vy*bodyA.vy);
-					bodyA.vx*=v;
-					bodyA.vy*=v;
-
-					bodyB.vx += p * nx; 
-					bodyB.vy += p * ny;
-					v = bodyB.speed/Math.sqrt(bodyB.vx*bodyB.vx + bodyB.vy*bodyB.vy);
-					bodyB.vx*=v;
-					bodyB.vy*=v;
-				}else{
-					let d = 2*(nx*bodyB.vx + ny*bodyB.vy);
-					bodyB.vx -= nx*d;
-					bodyB.vy -= ny*d;
-					bodyB.bounced = true;
-				}
-			}
-		}*/}
 	}
 
 	sortScore (a, b){
@@ -723,10 +565,14 @@ const Game = class {
 		console.log("Removed Client ID:",id);
 	}
 
-	removePlayer(id) {
-		this.gamecast(3, id);
-		delete this.players[id];
-		console.log("Removed Player ID:",id);
+	removePlayer(e) {
+
+		// log event
+		console.log("Removed Player ID:",e);
+
+		// resolve player
+		this.gamecast(3, e);
+		delete this.players[e[0]];
 	}
 
 	gamecast(type, data){

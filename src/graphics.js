@@ -72,26 +72,33 @@ var past_date = 0;
 var current_date = 0;
 module.exports = class {
 	constructor() {
+		// basic variables
 		this.scene = "menu";
-		this._tickFuncs = [];
 		this.view = 600;
 		this.running = true;
 		this.PID = null;
-		this.players = {};
+
+		// lists
+		this._tickFuncs = [];
 		this.objects = [];
 		this.pucks = [];
 		this.popups = [];
-		this.colors = COLORS
+		this.colors = COLORS;
+
+		// dictionaries
+		this.players = {};
 		this.titlePage = {
 			tiles:[],
 			pogolos:[],
 			pucks:[]
 		};
+
+		// objects
 		this.app = new PIXI.Application({
 			antialias: true
 		});
-		this.mat = new PIXI.Matrix();
 
+		// init
 		window.requestAnimationFrame(this.tick.bind(this));
 		window.addEventListener("resize", this.resize.bind(this));
 		this.resize();
@@ -272,22 +279,22 @@ module.exports = class {
 			}
 		}
 
-		PLAYERS[this.PID].pogolo.rotation = this.orientation/RAD;
+		PLAYERS[this.PID].echo.rotation = this.orientation/RAD;
 		Object.values(PLAYERS).forEach(player=>{
 			var theta = player.angle/RAD;
 			var vx = Math.cos(theta)*elapsed*2;
 			var vy = Math.sin(theta)*elapsed*2;
-			player.pogolo.x += vx;
-			player.pogolo.y += vy;
+			player.echo.x += vx;
+			player.echo.y += vy;
 		});
 		Object.values(this.pucks).forEach(puck=>{
 			var theta = puck.angle/RAD;
 			var vx = Math.cos(theta)*elapsed*2.5;
 			var vy = Math.sin(theta)*elapsed*2.5;
-			puck.puck.x += vx;
-			puck.puck.y += vy;
+			puck.echo.x += vx;
+			puck.echo.y += vy;
 		});
-		this.app.stage.pivot.set(PLAYERS[this.PID].pogolo.x,PLAYERS[this.PID].pogolo.y);
+		this.app.stage.pivot.set(PLAYERS[this.PID].echo.x,PLAYERS[this.PID].echo.y);
 	}
 	run(){
 		current_date = Date.now()
@@ -300,129 +307,138 @@ module.exports = class {
 		}
 	}
 	handleData(data){
-		graphics.clear();
-		this[EVENTS[data.type]](data.data)
-	}
-	catch_state(e){
-		graphics.clear();
-		var objects = this.objects;
-		for(var i = 0; i < objects.length; i +=3){
-			graphics.lineStyle(5, "0xFFFFFF", 1, 0.5);
-			graphics.drawCircle(objects[i], objects[i+1], objects[i+2]);
+		/*translates server message*/
+		try {
+			graphics.clear();
+			this[EVENTS[data.type]](data.data);
+		} catch (err){
+			console.log("Data was not run", err);
 		}
+	}
+
+	catch_state(e){
+		/* e=>[players, pucks] */
+
+		// variables
+		var objects = this.objects;
 		var PID = this.PID;
 		var players = e[0];
 		var pucks = e[1];
 		var index = players.indexOf(PID);
-		this.app.stage.pivot.set(players[index+1],players[index+2]);
-		/*[id,x,y,oriantation,angle,//speed]*/
-		for(var i = 0; i < players.length; i += 5){
-			var id = players[i];
-			if(PLAYERS[id] === void 0) continue;
-			PLAYERS[id].pogolo.x = players[i+1];
-			PLAYERS[id].pogolo.y = players[i+2];
-			if(id!==PID) PLAYERS[id].pogolo.rotation = players[i+3]*Math.PI/180;
-			PLAYERS[id].angle = players[i+4];
-			/*PLAYERS[id].speed = player[5];*/
-			PLAYERS[id].pogolo.visible = true;
+
+		// draw walls
+		for(var i = 0; i < objects.length; i +=3){
+			graphics.lineStyle(5, "0xFFFFFF", 1, 0.5);
+			graphics.drawCircle(objects[i], objects[i+1], objects[i+2]);
 		}
+
+		// update player info
+		for(var i = 0; i < players.length; i += 5){
+
+			// variables
+			var id = players[i];
+
+			// if players id is not in database continue
+			if(PLAYERS[id] === void 0) continue;
+
+			// set PLAYER values to players values
+			PLAYERS[id].echo.x = players[i+1];
+			PLAYERS[id].echo.y = players[i+2];
+			PLAYERS[id].angle = players[i+4];
+
+			// only set the player rotation if it is not the client
+			if(id !== PID) PLAYERS[id].echo.rotation = players[i+3]*Math.PI/180;
+
+			// display player
+			PLAYERS[id].echo.visible = true;
+		}
+
+		// update puck info
 		for(var i = 0; i < pucks.length; i += 3){
 			var id = i/3;
-			this.pucks[id].puck.x = pucks[i];
-			this.pucks[id].puck.y = pucks[i+1];
+			this.pucks[id].echo.x = pucks[i];
+			this.pucks[id].echo.y = pucks[i+1];
 			this.pucks[id].angle = pucks[i+2];
-			this.pucks[id].puck.visible = true;
+			this.pucks[id].echo.visible = true;
 		}
+
+		//set the canvas to the client's position
+		this.app.stage.pivot.set(players[index+1],players[index+2]);
 	}
-	/*
-	catch_objects(e){
-		var players = e.players;
-		var balls = e.balls;
-		var pos = e.pos;
-		var y = 0;
-		this.x = pos[0];
-		this.y = pos[1];
-		for(var i = 0, N = players.length; i < N; i += 4){
-			const pogolo = this.players[players[i]].pogolo;
-			pogolo.x = players[i+1];
-			pogolo.y = players[i+2];
-			pogolo.rotation = players[i+3]/180; 
-		}
-		for(var i = 0, N = balls.length; i < N; i += 3){
-			const puck = this.pucks[balls[i+2]];
-			puck.x = balls[i];
-			puck.y = balls[i+1];
-		}
-		if(e.kills){
-			var kills = e.kills;
-			console.log("list of kills=>", kills)
-			for(var i = 0, N = kills.length; i < N; i ++){
-				this.addPopUp("You Killied "+kills[i]+"!", 100, y);
-				y+=50;
-			}
-		}
-		if(e.score){
-			this.addPopUp("+"+e.score, 100, y);
-		}
-		graphics.lineStyle(5, 0xFFFFFF, 1, 0.5);
-		graphics.drawCircle(pos[0], pos[1], 400);
-	};//draw objects
-*/
+
 	catch_init(e){
+
+		// log event
+		console.log("Init:", e);
+		this.showTiles(false);
+		this.update_scene("game");
+
+		// variables
 		var players = e[0];
+		this.PID = players[0];
+
+		// catch objects
 		this.objects = e[1];
+
+		// catch pucks
 		for(var i = 0; i < e[2]; i ++){
 			this.addPuck();
 		}
 
-		console.log("Init", players[0])
-		this.showTiles(false);
-		this.update_scene("game");
-		var id = players[0];
-		var name = players[1];
-		var type = players[2];
-		this.PID = id;
-		this.name = name;
-		this.type = type;
-
-		var pogolo = new Pogolo(type);
-		this.app.stage.addChild(pogolo);
-		PLAYERS[id] = {id, name, type, pogolo, angle:0};
-
-		for(var i = 3; i < players.length; i += 3){
+		// catch pogolos
+		for(var i = 0; i < players.length; i += 3){
 			this.catch_player([players[i], players[i+1], players[i+2]]);
 		}
-	};//init player
+	};
 
 	catch_player(e){
+
+		// log event
+		console.log("Added Player:", e)
+
+		// variables
 		var id = e[0];
 		var name = e[1];
 		var type = e[2];
+		var echo = new Pogolo(type);
 
-		console.log("Added Player", id, "Name", name, "Type", type)
-		var pogolo = new Pogolo(type);
-		pogolo.visible = false;
+		// add pogolo to stage
+		echo.visible = false;
+		this.app.stage.addChild(echo);
 
-		this.app.stage.addChild(pogolo);
-		PLAYERS[id] = {id, name, type, pogolo, angle:0};
-	};//add player
+		// catch player
+		PLAYERS[id] = {id, name, type, echo, angle:0};
+
+	};
 
 	remove_player(e){
+
+		// log event
 		console.log("Removed Player ID:", e);
-		if(e === this.PID){
-			this.showTiles(true);
-			this.update_scene("menu")
-			Object.values(PLAYERS).forEach(player=>{
-				var id = player.id
-				this.app.stage.removeChild(PLAYERS[id].pogolo);
-				delete PLAYERS[id];
-			});
+
+		//variables
+		var id = e[0];
+		var kd = e[1];
+
+		// if your pogolo was removed
+		if(id === this.PID){
+
+			// action complete
 			console.log("You Died");
+			this.showTiles(true);
+			this.update_scene("menu");
+
+			// clear objects
+			Object.keys(PLAYERS).forEach(e=>{this.remove_echo(PLAYERS, e);});
+			for(var i = this.pucks.length; i --;){
+				this.app.stage.removeChild(this.pucks[i].echo);
+				this.pucks.splice(i, 1);
+			}
+			this.objects = [];
 		}else{
-			this.app.stage.removeChild(PLAYERS[e].pogolo);
-			delete PLAYERS[e];
+			this.remove_echo(PLAYERS, id);
 		}
-	};//delete player
+	};
 
 	catch_scores(e){
 		let playerlist = document.getElementById("playerlist");
@@ -438,25 +454,39 @@ module.exports = class {
 			}
 		}
 	};//update score
+
 	update_scene(scene){
 		document.getElementById(this.scene).style.display = "none";
 		document.getElementById(scene).style.display = "flex";
 		this.scene = scene
-	}
-	addPuck(){
-		const puck = new Puck();
-		puck.visible = false;
+	};
 
-		this.app.stage.addChild(puck);
-		this.pucks.push({puck,angle:0});
-	}
+	addPuck(){
+
+		// variable
+		var echo = new Puck();
+
+		// add puck to stage
+		echo.visible = false;
+		this.app.stage.addChild(echo);
+
+		// catch puck
+		this.pucks.push({echo, angle:0});
+	};
+
 	addPopUp (message, life, y){
 		var basicText = new PIXI.Text(message,textStyle);
 		basicText.x = 0;
 		basicText.y = y;
 		this.app.stage.addChild(basicText);
 		this.popups.push([basicText, 0, life, y]);
-	}
+	};
+
+	remove_echo (dictt, key){
+		this.app.stage.removeChild(dictt[key].echo);
+		delete dictt[key];
+	};
+
 	addTick(f) {
 		this._tickFuncs.push(f);
 	}

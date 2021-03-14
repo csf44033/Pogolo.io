@@ -65,6 +65,18 @@ window.addEventListener("mousemove", e => {
 	game.gfx.orientation = orientation
 });
 
+//update touch position
+window.addEventListener("touchmove", e => {
+	e.preventDefault();
+	var touch = e.changedTouches[0];
+	var orientation = Math.round(Math.atan2(
+		touch.pageY - window.innerHeight / 2,
+		touch.pageX - window.innerWidth / 2
+	)*180/Math.PI);
+	game.input.mouse = orientation;
+	game.gfx.orientation = orientation
+});
+
 //check for play button pressed
 document.getElementById("play-button").addEventListener("click", e => {
 	if(!game.multi.open) return;//don't run if not connected to server

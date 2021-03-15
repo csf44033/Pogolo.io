@@ -193,8 +193,6 @@ function Player (name, id, type, speed) {
 
 	this.oriantation = 0;
 	this.score = 0;
-	this.pastScore = 0;
-	this.killed = [];
 };
 Player.prototype = Object.create(Body.prototype);
 Player.prototype.updatePosition = function(){
@@ -259,8 +257,6 @@ const Game = class {
 
 		this.clients = {};//stores client id
 		this.players = {};
-
-		this.scoreboard = [];
 
 		//socket stuff
 		this.created = Date.now();
@@ -344,12 +340,9 @@ const Game = class {
 		});
 
 		//Game Loop
-		setInterval(() => {
-			//this.updateObjects();
-			//this.checkScore();
-			this.game_state();
-		}, 1000 / 15);
+		setInterval(this.game_state.bind(this), 1000 / 15);
 	}
+
 	game_state(dt){
 		dt=4;
 		var players = [];
@@ -428,6 +421,8 @@ const Game = class {
 					var remove = (velAlongNormal + distance)/2;
 					if(remove < 0){
 						player.bang(remove, nx, ny);
+						player.score ++;
+
 						puck.bang(remove, -nx, -ny);
 						puck.sentBy = id;
 					}
@@ -475,7 +470,8 @@ const Game = class {
 				round(player.x, 10),
 				round(player.y, 10),
 				round(player.oriantation/RAD,1),
-				player.angle
+				player.angle,
+				player.score
 			);
 		});
 
@@ -499,49 +495,6 @@ const Game = class {
 			);
 		})
 		this.gamecast(0, [players, pucks])
-	}
-
-	sortScore (a, b){
-		return b.score - a.score;
-	}
-
-	checkScore(){
-		let scoretracker = [];
-		Object.values(this.players).forEach(player => {//loop through players
-			scoretracker.push({id:player.id, score:player.score});
-		});
-		let N = scoretracker.length;
-		if(N){
-			scoretracker.sort(this.sortScore).slice(0,5);
-			if(this.scoreboard.length === N){
-				let changed = false;
-				for(let i = 0; i < N; i ++){
-					if((this.scoreboard[i].id !== scoretracker[i].id) || (this.scoreboard[i].score !== scoretracker[i].score)){
-						changed = true;
-						break;
-					}
-				}
-				if(changed) this.sendScore(scoretracker)
-				return;
-			}
-			this.sendScore(scoretracker);
-		}
-	};
-
-	sendScore(scores){
-		this.gamecast(5, scores);
-		this.scoreboard = scores;
-	}
-
-	playerInfo(id){
-		let p = this.players[id];
-		let message = [id, [], [-Math.round(p.x*10)/10, -Math.round(p.y*10)/10], []];
-		Object.values(this.players).forEach(player=>{
-			message[1].push([player.id, player.name, player.type, Math.round(player.x*10)/10, Math.round(player.y*10)/10]);
-		});
-
-		console.log("Sent",message);
-		return message;
 	}
 
 	send(ws, type, data) {
@@ -573,6 +526,9 @@ const Game = class {
 		// resolve player
 		this.gamecast(3, e);
 		delete this.players[e[0]];
+
+		// increase player's score
+		try {PLAYERS[e[1]].score += 2;} catch {}
 	}
 
 	gamecast(type, data){

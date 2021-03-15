@@ -19,8 +19,6 @@ const EVENTS = [
 	"catch_player",
 	"catch_init",
 	"remove_player"
-	/*"catch_objects",
-	"catch_scores"*/
 ];
 const textStyle = {
 	font : 'bold italic Arial',
@@ -333,7 +331,7 @@ module.exports = class {
 		}
 
 		// update player info
-		for(var i = 0; i < players.length; i += 5){
+		for(var i = 0; i < players.length; i += 6){
 
 			// variables
 			var id = players[i];
@@ -341,16 +339,16 @@ module.exports = class {
 			// if players id is not in database continue
 			if(PLAYERS[id] === void 0) continue;
 
-			// set PLAYER values to players values
+			// set PLAYER echo
+			PLAYERS[id].echo.visible = true;
 			PLAYERS[id].echo.x = players[i+1];
 			PLAYERS[id].echo.y = players[i+2];
-			PLAYERS[id].angle = players[i+4];
-
 			// only set the player rotation if it is not the client
 			if(id !== PID) PLAYERS[id].echo.rotation = players[i+3]*Math.PI/180;
 
-			// display player
-			PLAYERS[id].echo.visible = true;
+			// set PLAYER variables
+			PLAYERS[id].angle = players[i+4];
+			PLAYERS[id].score = players[i+5];
 		}
 
 		// update puck info
@@ -407,7 +405,7 @@ module.exports = class {
 		this.app.stage.addChild(echo);
 
 		// catch player
-		PLAYERS[id] = {id, name, type, echo, angle:0};
+		PLAYERS[id] = {id, name, type, echo, score:0, angle:0};
 
 	};
 
@@ -418,7 +416,7 @@ module.exports = class {
 
 		//variables
 		var id = e[0];
-		var kd = e[1];
+		//var kd = e[1];
 
 		// if your pogolo was removed
 		if(id === this.PID){
@@ -436,6 +434,9 @@ module.exports = class {
 			}
 			this.objects = [];
 		}else{
+			if(kd === this.PID){
+				// you killed player at id
+			}
 			this.remove_echo(PLAYERS, id);
 		}
 	};

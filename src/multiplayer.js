@@ -81,6 +81,6 @@ module.exports = class Backend {
 	}
 
 	getHost() {
-		return "ws://1.0.0.127:8080";
+		return "ws://127.0.0.1:8080";
 	}
 };

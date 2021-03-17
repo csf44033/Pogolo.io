@@ -141,23 +141,19 @@ button.menu-options {
   border-bottom: 150px solid transparent;
   cursor: pointer; }
 
-#killed {
+.killed {
   background-color: #696969;
   color: white;
+  text-align: center;
   border-radius: 100px;
-  height: 50px;
+  line-height: 25px;
+  height: 25px;
   width: -webkit-fit-content;
   width: -moz-fit-content;
   width: fit-content;
-  margin-left: auto;
-  margin-right: auto;
-  text-align: center; }
-
-.mvert {
-  height: 50px;
-  line-height: 50px;
-  text-align: center;
-  padding: 0px 10px; }
+  margin: 10px;
+  margin-bottom: 0px;
+  transition: opacity 1s; }
 
 /*
 body {

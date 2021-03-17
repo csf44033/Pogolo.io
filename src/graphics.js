@@ -65,6 +65,23 @@ const Tile = class {
 		return this.tile;
 	}
 };
+
+function update_object_position (dictt, elapsed) {
+	Object.values(dictt).forEach(obj => {
+
+		// variables
+		var theta = obj.angle/RAD;
+		var speed = obj.speed;
+
+		// update object position
+		obj.echo.x += Math.cos(theta)*elapsed*speed;
+		obj.echo.y += Math.sin(theta)*elapsed*speed;
+		//((a - test + PI) % TAU + TAU) % TAU - PI
+		var shortest = ((obj.orientation - obj.echo.rotation + PI) % tau + tau) % tau - PI;
+		obj.echo.rotation += elapsed*shortest/4;
+	});
+};
+
 const PLAYERS = {};
 var past_date = 0;
 var current_date = 0;
@@ -156,7 +173,6 @@ module.exports = class {
 		this.app.stage.addChild(graphics);
 	}
 	menu(){
-		graphics.clear();
 		var menuObjects = this.titlePage;
 		var tiles = menuObjects.tiles;
 		var pogolos = menuObjects.pogolos;
@@ -256,48 +272,23 @@ module.exports = class {
 		}
 	}
 	game(elapsed){
-		graphics.clear();
 		var objects = this.objects;
 		for(var i = 0; i < objects.length; i +=3){
 			graphics.lineStyle(5, "0xFFFFFF", 1, 0.5);
 			graphics.drawCircle(objects[i], objects[i+1], objects[i+2]);
 		}
-		var popups = this.popups;
-		for(let i = popups.length; i --;){
-			let p = popups[i];
-			const dude = p[0];
-			let t = p[1];
-			let life = p[2];
-			let y = p[3];
-			dude.y = y + 0.25*t*t - 10*t;
-			p[1] ++;
-			if(t>life){		//Jacob wuz here
-				this.app.stage.removeChild(dude);
-				this.popups.splice(i,1);
-			}
-		}
+
+		update_object_position(PLAYERS, elapsed);
+		update_object_position(this.pucks, elapsed);
 
 		PLAYERS[this.PID].echo.rotation = this.orientation/RAD;
-		Object.values(PLAYERS).forEach(player=>{
-			var theta = player.angle/RAD;
-			var vx = Math.cos(theta)*elapsed*2;
-			var vy = Math.sin(theta)*elapsed*2;
-			player.echo.x += vx;
-			player.echo.y += vy;
-		});
-		Object.values(this.pucks).forEach(puck=>{
-			var theta = puck.angle/RAD;
-			var vx = Math.cos(theta)*elapsed*2.5;
-			var vy = Math.sin(theta)*elapsed*2.5;
-			puck.echo.x += vx;
-			puck.echo.y += vy;
-		});
-		this.app.stage.pivot.set(PLAYERS[this.PID].echo.x,PLAYERS[this.PID].echo.y);
+		this.app.stage.pivot.set(PLAYERS[this.PID].echo.x,  PLAYERS[this.PID].echo.y);
 	}
 	run(){
-		current_date = Date.now()
+		graphics.clear();
+		past_date = current_date;
+		current_date = Date.now();
 		this[this.scene]((current_date-past_date)*6/100);
-		past_date = current_date
 	}
 	showTiles(visible){
 		for(var i = 0; i < this.titlePage.tiles.length; i ++){
@@ -305,30 +296,19 @@ module.exports = class {
 		}
 	}
 	handleData(data){
-		/*translates server message*/
 		try {
-			graphics.clear();
 			this[EVENTS[data.type]](data.data);
 		} catch (err){
-			console.log("Data was not run", err);
+			console.log("Data was not run:", err);
 		}
 	}
 
 	catch_state(e){
-		/* e=>[players, pucks] */
 
 		// variables
-		var objects = this.objects;
 		var PID = this.PID;
 		var players = e[0];
 		var pucks = e[1];
-		var index = players.indexOf(PID);
-
-		// draw walls
-		for(var i = 0; i < objects.length; i +=3){
-			graphics.lineStyle(5, "0xFFFFFF", 1, 0.5);
-			graphics.drawCircle(objects[i], objects[i+1], objects[i+2]);
-		}
 
 		// update player info
 		for(var i = 0; i < players.length; i += 6){
@@ -344,7 +324,7 @@ module.exports = class {
 			PLAYERS[id].echo.x = players[i+1];
 			PLAYERS[id].echo.y = players[i+2];
 			// only set the player rotation if it is not the client
-			if(id !== PID) PLAYERS[id].echo.rotation = players[i+3]*Math.PI/180;
+			if(id !== PID) PLAYERS[id].orientation = players[i+3]*Math.PI/180;
 
 			// set PLAYER variables
 			PLAYERS[id].angle = players[i+4];
@@ -359,14 +339,12 @@ module.exports = class {
 			this.pucks[id].angle = pucks[i+2];
 			this.pucks[id].echo.visible = true;
 		}
-
-		//set the canvas to the client's position
-		this.app.stage.pivot.set(players[index+1],players[index+2]);
+		this.app.stage.pivot.set(PLAYERS[PID].echo.x,  PLAYERS[PID].echo.y);
 	}
 
 	catch_init(e){
 
-		// log event
+		// log event  
 		console.log("Init:", e);
 		this.showTiles(false);
 		this.update_scene("game");
@@ -405,7 +383,7 @@ module.exports = class {
 		this.app.stage.addChild(echo);
 
 		// catch player
-		PLAYERS[id] = {id, name, type, echo, score:0, angle:0};
+		PLAYERS[id] = {id, name, type, echo, orientation:0, speed:2, score:0, angle:0};
 
 	};
 
@@ -416,7 +394,6 @@ module.exports = class {
 
 		//variables
 		var id = e[0];
-		//var kd = e[1];
 
 		// if your pogolo was removed
 		if(id === this.PID){
@@ -434,27 +411,22 @@ module.exports = class {
 			}
 			this.objects = [];
 		}else{
-			if(kd === this.PID){
+			if(e[1] && e[1] === this.PID){
 				// you killed player at id
+				var node = document.createElement("DIV");
+				node.className = "killed row";
+				node.innerHTML = "<div><img src = 'sprites/killed.png' width='25px' height='25px'></div>"+
+								 `<div class = 'fit' style = 'padding:0px 10px;'>Killed: ${PLAYERS[id].name}</div>`;
+				var parent = document.getElementById("kill_chart");
+				parent.appendChild(node);
+				setTimeout(()=>{
+					node.style.opacity = 0;
+					node.addEventListener('transitionend', () => node.remove());
+				}, 5000);
 			}
 			this.remove_echo(PLAYERS, id);
 		}
 	};
-
-	catch_scores(e){
-		let playerlist = document.getElementById("playerlist");
-		let listItem = playerlist.getElementsByTagName("li");
-		for(let i = 0, N = listItem.length; i < N; i ++){
-			if(e[i] === void 0){
-				listItem[i].style.display = "none";
-			}else{
-				listItem[i].style.display = "list-item";
-				var player = this.players[e[i].id]
-				var c = COLORS[player.type][0];
-				listItem[i].innerHTML = player.name+` <span style='box-shadow:0 0 10px 5px #${c};background-color:#${c};margin:5px;'>${e[i].score}</span>`;
-			}
-		}
-	};//update score
 
 	update_scene(scene){
 		document.getElementById(this.scene).style.display = "none";
@@ -472,15 +444,7 @@ module.exports = class {
 		this.app.stage.addChild(echo);
 
 		// catch puck
-		this.pucks.push({echo, angle:0});
-	};
-
-	addPopUp (message, life, y){
-		var basicText = new PIXI.Text(message,textStyle);
-		basicText.x = 0;
-		basicText.y = y;
-		this.app.stage.addChild(basicText);
-		this.popups.push([basicText, 0, life, y]);
+		this.pucks.push({echo, orientation:0, speed:2.5, angle:0});
 	};
 
 	remove_echo (dictt, key){

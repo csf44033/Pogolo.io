@@ -191,7 +191,7 @@ function Player (name, id, type, speed) {
 	this.id = id;
 	this.type = type;
 
-	this.oriantation = 0;
+	this.orientation = 0;
 	this.score = 0;
 };
 Player.prototype = Object.create(Body.prototype);
@@ -202,7 +202,7 @@ Player.prototype.updatePosition = function(){
 	this.vanguard.y = this.body.y = this.y;
 };
 Player.prototype.aim = function(angle) {
-	this.oriantation = angle;
+	this.orientation = angle;
 	var v = this.vanguard;
 	v.start = angle - TAU/15;
 	v.end = angle + TAU/15;
@@ -469,7 +469,7 @@ const Game = class {
 				player.id,
 				round(player.x, 10),
 				round(player.y, 10),
-				round(player.oriantation/RAD,1),
+				round(player.orientation/RAD,1),
 				player.angle,
 				player.score
 			);

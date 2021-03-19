@@ -77,14 +77,31 @@ function update_object_position (dictt, elapsed) {
 		obj.echo.x += Math.cos(theta)*elapsed*speed;
 		obj.echo.y += Math.sin(theta)*elapsed*speed;
 		//((a - test + PI) % TAU + TAU) % TAU - PI
-		var shortest = ((obj.orientation - obj.echo.rotation + PI) % tau + tau) % tau - PI;
+		var orientation = obj.orientation/RAD;
+		var shortest = ((orientation - obj.echo.rotation + PI) % tau + tau) % tau - PI;
 		obj.echo.rotation += elapsed*shortest/4;
 	});
 };
+function write_object (read, write){
+	Object.values(read).forEach(dictt=>{
+		var loc = dictt.key;
+		delete dictt.key;
 
+		Object.entries(dictt).forEach(([key0, value0]) => {
+			if (typeof value0 === 'object') {
+				Object.entries(value0).forEach(([key1, value1]) => {
+					write[loc][key0][key1] = value1;
+				});
+			}else{
+				write[loc][key0] = value0;
+			}
+		});
+	});
+};
 const PLAYERS = {};
 var past_date = 0;
 var current_date = 0;
+
 module.exports = class {
 	constructor() {
 		// basic variables
@@ -281,14 +298,15 @@ module.exports = class {
 		update_object_position(PLAYERS, elapsed);
 		update_object_position(this.pucks, elapsed);
 
-		PLAYERS[this.PID].echo.rotation = this.orientation/RAD;
-		this.app.stage.pivot.set(PLAYERS[this.PID].echo.x,  PLAYERS[this.PID].echo.y);
+		var PID = this.PID
+		PLAYERS[PID].echo.rotation = this.orientation/RAD;
+		this.app.stage.pivot.set(PLAYERS[PID].echo.x,  PLAYERS[PID].echo.y);
 	}
 	run(){
 		graphics.clear();
 		past_date = current_date;
 		current_date = Date.now();
-		this[this.scene]((current_date-past_date)*6/100);
+		this[this.scene](6*(current_date-past_date)/100);
 	}
 	showTiles(visible){
 		for(var i = 0; i < this.titlePage.tiles.length; i ++){
@@ -296,6 +314,7 @@ module.exports = class {
 		}
 	}
 	handleData(data){
+		
 		try {
 			this[EVENTS[data.type]](data.data);
 		} catch (err){
@@ -304,41 +323,9 @@ module.exports = class {
 	}
 
 	catch_state(e){
-
-		// variables
+		write_object(e[0], PLAYERS);
+		write_object(e[1], this.pucks);
 		var PID = this.PID;
-		var players = e[0];
-		var pucks = e[1];
-
-		// update player info
-		for(var i = 0; i < players.length; i += 6){
-
-			// variables
-			var id = players[i];
-
-			// if players id is not in database continue
-			if(PLAYERS[id] === void 0) continue;
-
-			// set PLAYER echo
-			PLAYERS[id].echo.visible = true;
-			PLAYERS[id].echo.x = players[i+1];
-			PLAYERS[id].echo.y = players[i+2];
-			// only set the player rotation if it is not the client
-			if(id !== PID) PLAYERS[id].orientation = players[i+3]*Math.PI/180;
-
-			// set PLAYER variables
-			PLAYERS[id].angle = players[i+4];
-			PLAYERS[id].score = players[i+5];
-		}
-
-		// update puck info
-		for(var i = 0; i < pucks.length; i += 3){
-			var id = i/3;
-			this.pucks[id].echo.x = pucks[i];
-			this.pucks[id].echo.y = pucks[i+1];
-			this.pucks[id].angle = pucks[i+2];
-			this.pucks[id].echo.visible = true;
-		}
 		this.app.stage.pivot.set(PLAYERS[PID].echo.x,  PLAYERS[PID].echo.y);
 	}
 
@@ -379,7 +366,6 @@ module.exports = class {
 		var echo = new Pogolo(type);
 
 		// add pogolo to stage
-		echo.visible = false;
 		this.app.stage.addChild(echo);
 
 		// catch player
@@ -440,7 +426,6 @@ module.exports = class {
 		var echo = new Puck();
 
 		// add puck to stage
-		echo.visible = false;
 		this.app.stage.addChild(echo);
 
 		// catch puck

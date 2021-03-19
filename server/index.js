@@ -402,7 +402,9 @@ const Game = class {
 				var ny = contact.normalY;
 				var velAlongNormal = nx*vx0 + ny*vy0;
 				var remove = velAlongNormal + distance;
-				if(remove < 0) player.bang(remove, -nx, -ny);
+				if(remove < 0){
+					player.bang(remove, -nx, -ny);
+				}
 			});
 
 			/*Puck*/
@@ -453,48 +455,54 @@ const Game = class {
 		});
 
 		/*Update player*/
-		Object.values(this.players).forEach(player => {
-			player.updatePosition();
-			var collide = player.collide;
-
+		Object.entries(this.players).forEach(([key, value]) => {
+			value.updatePosition();
+			var collide = value.collide;
+			var add = {
+				key: key, 
+				orientation: round(value.orientation/RAD, 1),
+				score: value.score
+			};
 			if(collide.hit){
-				var angle = player.angle*RAD;
+				var angle = value.angle*RAD;
 				var ct = Math.cos(angle);
 				var st = Math.sin(angle);
 				var d = 2*(collide.nx*ct + collide.ny*st);
-				player.updateAngle(Math.atan2(st - collide.ny*d, ct - collide.nx*d), dt);
+				value.updateAngle(Math.atan2(st - collide.ny*d, ct - collide.nx*d), dt);
+				add.echo = {
+					x: round(value.x, 10),
+					y: round(value.y, 10)
+				};
+				add.angle = value.angle;
 			}
 
-			players.push(
-				player.id,
-				round(player.x, 10),
-				round(player.y, 10),
-				round(player.orientation/RAD,1),
-				player.angle,
-				player.score
-			);
+			players.push(add);
 		});
 
 		/*Update pucks*/
-		Object.values(this.pucks).forEach(puck=>{
-			puck.updatePosition();
-			var collide = puck.collide;
+		Object.entries(this.pucks).forEach(([key, value]) => {
+			value.updatePosition();
+			var collide = value.collide;
 
 			if(collide.hit){
-				var angle = puck.angle*RAD;
+				var angle = value.angle*RAD;
 				var ct = Math.cos(angle);
 				var st = Math.sin(angle);
 				var d = 2*(collide.nx*ct + collide.ny*st);
-				puck.updateAngle(Math.atan2(st - collide.ny*d, ct - collide.nx*d), dt);
+				value.updateAngle(Math.atan2(st - collide.ny*d, ct - collide.nx*d), dt);
+				pucks.push(
+					{
+						key: key,
+						echo:{
+							x: round(value.x, 10),
+							y: round(value.y, 10)
+						},
+						angle: value.angle
+					}
+				)
 			}
-
-			pucks.push(
-				round(puck.x, 10),
-				round(puck.y, 10),
-				puck.angle,
-			);
 		})
-		this.gamecast(0, [players, pucks])
+		this.gamecast(0, [players, pucks])//, Date.now()])
 	}
 
 	send(ws, type, data) {

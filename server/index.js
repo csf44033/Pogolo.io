@@ -1,6 +1,8 @@
 const PI = Math.PI;
 const TAU = PI*2;
 const RAD = PI/180
+var past_date = 0;
+var current_date = 0;
 
 const WebSocket = require("ws");
 const { decode, encode } = require("@msgpack/msgpack");
@@ -58,14 +60,14 @@ function Body (x, y, speed, mass){
 
 	this.updateAngle(Math.random()*TAU, 4)
 };
-Body.prototype.updateAngle = function(angle, dt){
+Body.prototype.updateVelocity = function(dt){
 	var speed = this.speed;
-	angle = round(angle/RAD, 1);
-	this.angle = angle;
-	angle*=RAD;
+	var angle = this.angle*RAD;
     this.vx = Math.cos(angle)*speed*dt;
 	this.vy = Math.sin(angle)*speed*dt;
-
+}
+Body.prototype.updateAngle = function(angle){
+	this.angle = round(angle/RAD, 1);
 	this.collide = {hit: false, nx: 1, ny: 0};
 };
 Body.prototype.bang = function(remove, nx, ny){
@@ -340,13 +342,23 @@ const Game = class {
 		});
 
 		//Game Loop
-		setInterval(this.game_state.bind(this), 1000 / 15);
+		setInterval(()=>{
+			past_date = current_date;
+			current_date = Date.now();
+			this.game_state(6*(current_date-past_date)/100)
+		}, 1000 / 15);
 	}
 
 	game_state(dt){
-		dt=4;
 		var players = [];
 		var pucks = [];
+
+		Object.values(this.players).forEach(body=>{
+			body.updateVelocity(dt)
+		});
+		Object.values(this.pucks).forEach(body=>{
+			body.updateVelocity(dt)
+		});
 
 		/*Puck collisions*/
 		for(var i = this.pucks.length; i --;){
@@ -468,7 +480,7 @@ const Game = class {
 				var ct = Math.cos(angle);
 				var st = Math.sin(angle);
 				var d = 2*(collide.nx*ct + collide.ny*st);
-				value.updateAngle(Math.atan2(st - collide.ny*d, ct - collide.nx*d), dt);
+				value.updateAngle(Math.atan2(st - collide.ny*d, ct - collide.nx*d));
 				add.echo = {
 					x: round(value.x, 10),
 					y: round(value.y, 10)
@@ -489,7 +501,7 @@ const Game = class {
 				var ct = Math.cos(angle);
 				var st = Math.sin(angle);
 				var d = 2*(collide.nx*ct + collide.ny*st);
-				value.updateAngle(Math.atan2(st - collide.ny*d, ct - collide.nx*d), dt);
+				value.updateAngle(Math.atan2(st - collide.ny*d, ct - collide.nx*d));
 				pucks.push(
 					{
 						key: key,

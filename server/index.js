@@ -205,6 +205,7 @@ Player.prototype.updatePosition = function(){
 };
 Player.prototype.aim = function(angle) {
 	this.orientation = angle;
+	angle*=RAD
 	var v = this.vanguard;
 	v.start = angle - TAU/15;
 	v.end = angle + TAU/15;
@@ -219,6 +220,21 @@ function Puck (x,y){
 }
 Puck.prototype = Object.create(Circle.prototype);
 
+function obj_list (key, dict, optional=[]) {
+	var obj = {
+		key: key,
+		angle: dict.angle,
+		echo: {
+			x: round(dict.x, 10),
+			y: round(dict.y, 10)
+		}
+	}
+	Object.values(optional).forEach(option=>{
+		obj[option] = dict[option];
+	});
+	return obj;
+};
+
 const Game = class {
 	constructor() {
 		//Game Data
@@ -228,28 +244,7 @@ const Game = class {
 		this.pucks = [];
 		//create default map (radius[400]-stroke[])
 		this.objects.push(new inverseCircle(0,0,397.5,0))//400-stroke
-		for(var i = 0; i < 2; i ++){
-			var r = Math.random()*60+60;
-			var a = Math.random()*TAU;
-			var l = Math.random()*(400-r-120);
-			var x = Math.cos(a)*l;
-			var y = Math.sin(a)*l;
-			var no = false;
-			for(var j = 1; j < 1+i; j ++){
-				var dx = this.objects[j].x-x;
-				var dy = this.objects[j].y-y;
-				var d = dx*dx + dy*dy;
-				if(d<Math.pow(r+this.objects[j].radius+120,2)){
-					no = true;
-					break;
-				}
-			}
-			if(no){
-				i--;
-				continue;
-			}
-			this.objects.push(new Circle(Math.cos(a)*l,Math.sin(a)*l,r,0))//400-stroke
-		}
+		
 		for(var i = 0; i < 3; i ++){
 			var r = 22.5;
 			var a = Math.random()*TAU;
@@ -294,35 +289,34 @@ const Game = class {
 					case "join":
 
 						// variables
-						let name = data.name;
-						let type = data.type;
-						if(name.length === 0) name = "Anonymous";
+						var name = data.name ? data.name : 'Anonymous';
+						var type = data.type;
+						var player = new Player(name, PID, type, 2);
+						var player_lst = [obj_list(PID, player, ['name', 'type', 'orientation', 'score', 'speed'])];
+						var wall_lst = [];
+						var puck_lst = [];
 
-						// tell all the players this user joined
-						var message = [PID, name, type]
-						this.gamecast(1, message);
+						// send player to other clients
+						this.gamecast(1, player_lst[0]);
 
-						// tell the player all existing data
-						message = [message, [], this.pucks.length];
-
-						// add objects
-						Object.values(this.players).forEach(player=>{
-							message[0].push(player.id, player.name, player.type);
+						Object.entries(this.players).forEach(([key, value])=>{
+							player_lst.push(obj_list(key, value, ['name', 'type', 'orientation', 'score', 'speed']));
 						});
 						Object.values(this.objects).forEach(object=>{
-							message[1].push(object.x, object.y, object.radius);
+							wall_lst.push(object.x, object.y, object.radius);
 						});
+						Object.entries(this.pucks).forEach(([key, value]) => {
+							puck_lst.push(obj_list(key, value, ['speed']));
+						});
+						console.log(puck_lst)
 
 						// send players to client
-						this.send(ws, 2, message);
-
-						// add player
-						this.players[PID] = new Player(name, PID, type, 2);
-						console.log("Client", PID, "Created Player", name);
+						this.send(ws, 2, [player_lst, wall_lst, puck_lst]);
+						this.players[PID] = player;
 					break;
 					case "input":
 						try {
-							this.players[PID].aim(data.mouse*RAD);
+							this.players[PID].aim(data.mouse);
 						} catch {
 							console.log("Client", PID, "Used Inputs Without a Player")
 						}
@@ -472,7 +466,7 @@ const Game = class {
 			var collide = value.collide;
 			var add = {
 				key: key, 
-				orientation: round(value.orientation/RAD, 1),
+				orientation: value.orientation,
 				score: value.score
 			};
 			if(collide.hit){
@@ -481,11 +475,7 @@ const Game = class {
 				var st = Math.sin(angle);
 				var d = 2*(collide.nx*ct + collide.ny*st);
 				value.updateAngle(Math.atan2(st - collide.ny*d, ct - collide.nx*d));
-				add.echo = {
-					x: round(value.x, 10),
-					y: round(value.y, 10)
-				};
-				add.angle = value.angle;
+				add = obj_list(key, value, ['orientation', 'score']);
 			}
 
 			players.push(add);
@@ -502,16 +492,7 @@ const Game = class {
 				var st = Math.sin(angle);
 				var d = 2*(collide.nx*ct + collide.ny*st);
 				value.updateAngle(Math.atan2(st - collide.ny*d, ct - collide.nx*d));
-				pucks.push(
-					{
-						key: key,
-						echo:{
-							x: round(value.x, 10),
-							y: round(value.y, 10)
-						},
-						angle: value.angle
-					}
-				)
+				pucks.push(obj_list(key, value, []))
 			}
 		})
 		this.gamecast(0, [players, pucks])//, Date.now()])

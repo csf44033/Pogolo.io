@@ -66,8 +66,8 @@ const Tile = class {
 	}
 };
 
-function update_object_position (dictt, elapsed) {
-	Object.values(dictt).forEach(obj => {
+function update_object_position (dict, elapsed) {
+	Object.values(dict).forEach(obj => {
 
 		// variables
 		var theta = obj.angle/RAD;
@@ -77,28 +77,36 @@ function update_object_position (dictt, elapsed) {
 		obj.echo.x += Math.cos(theta)*elapsed*speed;
 		obj.echo.y += Math.sin(theta)*elapsed*speed;
 		//((a - test + PI) % TAU + TAU) % TAU - PI
-		var orientation = obj.orientation/RAD;
-		var shortest = ((orientation - obj.echo.rotation + PI) % tau + tau) % tau - PI;
-		obj.echo.rotation += elapsed*shortest/4;
+		if(obj.orientation){
+			var orientation = obj.orientation/RAD;
+			var shortest = ((orientation - obj.echo.rotation + PI) % tau + tau) % tau - PI;
+			obj.echo.rotation += elapsed*shortest/4;
+		}
 	});
 };
-function write_object (read, write){
-	Object.values(read).forEach(dictt=>{
-		var loc = dictt.key;
-		delete dictt.key;
 
-		Object.entries(dictt).forEach(([key0, value0]) => {
-			if (typeof value0 === 'object') {
-				Object.entries(value0).forEach(([key1, value1]) => {
-					write[loc][key0][key1] = value1;
-				});
-			}else{
-				write[loc][key0] = value0;
-			}
-		});
+function write_dict (dict, write) {
+	var loc = dict.key;
+	delete dict.key;
+
+	Object.entries(dict).forEach(([key0, value0]) => {
+		if (typeof value0 === 'object') {
+			Object.entries(value0).forEach(([key1, value1]) => {
+				write[loc][key0][key1] = value1;
+			});
+		}else{
+			write[loc][key0] = value0;
+		}
+	});
+}
+
+function read_write (read, write){
+	Object.values(read).forEach(dict=>{
+		write_dict(dict, write);
 	});
 };
 const PLAYERS = {};
+const PUCKS = {};
 var past_date = 0;
 var current_date = 0;
 
@@ -113,7 +121,6 @@ module.exports = class {
 		// lists
 		this._tickFuncs = [];
 		this.objects = [];
-		this.pucks = [];
 		this.popups = [];
 		this.colors = COLORS;
 
@@ -296,7 +303,7 @@ module.exports = class {
 		}
 
 		update_object_position(PLAYERS, elapsed);
-		update_object_position(this.pucks, elapsed);
+		update_object_position(PUCKS, elapsed);
 
 		var PID = this.PID
 		PLAYERS[PID].echo.rotation = this.orientation/RAD;
@@ -314,17 +321,16 @@ module.exports = class {
 		}
 	}
 	handleData(data){
-		
 		try {
 			this[EVENTS[data.type]](data.data);
 		} catch (err){
-			console.log("Data was not run:", err);
+			console.log("Data was not run:", err, data);
 		}
 	}
 
 	catch_state(e){
-		write_object(e[0], PLAYERS);
-		write_object(e[1], this.pucks);
+		read_write(e[0], PLAYERS);
+		read_write(e[1], PUCKS);
 		var PID = this.PID;
 		this.app.stage.pivot.set(PLAYERS[PID].echo.x,  PLAYERS[PID].echo.y);
 	}
@@ -338,39 +344,26 @@ module.exports = class {
 
 		// variables
 		var players = e[0];
-		this.PID = players[0];
-
-		// catch objects
 		this.objects = e[1];
+		var pucks = e[2];
+		this.PID = players[0].key;
 
-		// catch pucks
-		for(var i = 0; i < e[2]; i ++){
-			this.addPuck();
-		}
+		Object.values(players).forEach(dict => {
+			this.catch_player(dict);
+		});
 
-		// catch pogolos
-		for(var i = 0; i < players.length; i += 3){
-			this.catch_player([players[i], players[i+1], players[i+2]]);
-		}
+		Object.values(pucks).forEach(dict => {
+			this.catch_puck(dict);
+		});
 	};
 
 	catch_player(e){
-
-		// log event
-		console.log("Added Player:", e)
-
-		// variables
-		var id = e[0];
-		var name = e[1];
-		var type = e[2];
-		var echo = new Pogolo(type);
-
-		// add pogolo to stage
+		var key = e.key;
+		var echo = new Pogolo(e.type);
 		this.app.stage.addChild(echo);
 
-		// catch player
-		PLAYERS[id] = {id, name, type, echo, orientation:0, speed:2, score:0, angle:0};
-
+		PLAYERS[key] = {echo};
+		write_dict(e, PLAYERS);
 	};
 
 	remove_player(e){
@@ -391,10 +384,7 @@ module.exports = class {
 
 			// clear objects
 			Object.keys(PLAYERS).forEach(e=>{this.remove_echo(PLAYERS, e);});
-			for(var i = this.pucks.length; i --;){
-				this.app.stage.removeChild(this.pucks[i].echo);
-				this.pucks.splice(i, 1);
-			}
+			Object.keys(PUCKS).forEach(e=>{this.remove_echo(PUCKS, e);});
 			this.objects = [];
 		}else{
 			if(e[1] && e[1] === this.PID){
@@ -420,21 +410,17 @@ module.exports = class {
 		this.scene = scene
 	};
 
-	addPuck(){
-
-		// variable
+	catch_puck(e){
 		var echo = new Puck();
-
-		// add puck to stage
 		this.app.stage.addChild(echo);
 
-		// catch puck
-		this.pucks.push({echo, orientation:0, speed:2.5, angle:0});
+		PUCKS[e.key] = {echo};
+		write_dict(e, PUCKS);
 	};
 
-	remove_echo (dictt, key){
-		this.app.stage.removeChild(dictt[key].echo);
-		delete dictt[key];
+	remove_echo (dict, key){
+		this.app.stage.removeChild(dict[key].echo);
+		delete dict[key];
 	};
 
 	addTick(f) {
